@@ -1,6 +1,4 @@
-use std::path::{Path, PathBuf};
-use rocket::{form::name::Name, fs::{relative, FileServer}};
-use rocket_dyn_templates::{context, Template};
+use rocket::fs::{relative, FileServer};
 use rocket::{fs::NamedFile, serde::{Deserialize, Serialize}, tokio::sync::broadcast::channel};
 
 #[macro_use] extern crate rocket;
@@ -29,5 +27,4 @@ fn rocket() -> _{
     .manage(channel::<Sesion>(500).0)
     .mount("/", routes![index,lobby])
     .mount("/", FileServer::from(relative!("files")))
-    .attach(Template::fairing())
 }
