@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title></title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="lobby.css">
+    </head>
+    <body>
+        <h1 id ="nombreChat">Lobby</h1>
+        <div id="consola">
+            <form id="formConsola">
+                <input type="text" name="destino" id="destino">
+                <button type="submit">Crear/Unirse sala</button>
+            </form>
+            <button id="volver">Volver al menu de usuario</button>
+        </div>
+        <div id="chat">
+            <form action="/mensaje" method="post">
+                <input type="text" name="mensaje" id="mensaje">
+                <button type="submit">Enviar</button>
+            </form>
+            <button id="salir">Salir del chat</button>
+        </div>
+        
+        <script src="lobby.js" async defer></script>
+    </body>
+</html>

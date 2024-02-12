@@ -10,6 +10,11 @@ async fn index() -> Option<NamedFile>{
     NamedFile::open("files/html/main.html").await.ok()
 }
 
+#[get("/lobby")]
+async fn lobby() -> Option<NamedFile>{
+    NamedFile::open("files/html/lobby.html").await.ok()
+}
+
 
 #[derive(Debug, FromForm , Clone, Serialize, Deserialize, )]
 #[serde(crate = "rocket::serde")]
@@ -22,7 +27,7 @@ struct Sesion{
 fn rocket() -> _{
     rocket::build()
     .manage(channel::<Sesion>(500).0)
-    .mount("/", routes![index])
+    .mount("/", routes![index,lobby])
     .mount("/", FileServer::from(relative!("files")))
     .attach(Template::fairing())
 }
