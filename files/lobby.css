@@ -8,8 +8,4 @@ body{
     height: 100vh;
 }
 
-#chat{
-    height: 100vh;
-    justify-content: space-evenly;
-    overflow: scroll;
-}
+
