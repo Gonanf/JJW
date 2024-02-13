@@ -20,7 +20,7 @@ if (localStorage["nombre"]) {
     no.hidden = true;
   };
   no.onclick = function () {
-    document.location.href = "http://192.168.0.110:80/lobby";
+    document.location.href = "http://127.0.0.1:8000/lobby";
   };
 }
 f.addEventListener("submit", function (a) {

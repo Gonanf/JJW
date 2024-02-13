@@ -2,6 +2,7 @@ use rocket::form::{Form, FromForm};
 use rocket::fs::{relative, FileServer};
 use rocket::response::stream::{EventStream, Event};
 use rocket::tokio::select;
+use rocket::tokio::sync::broadcast::error;
 use rocket::tokio::sync::broadcast::{channel, Sender, error::RecvError};
 use rocket::{fs::NamedFile, serde::{Deserialize, Serialize}, State, Shutdown};
 
@@ -33,19 +34,25 @@ fn msg(ms: Form<Sesion>,q: &State<Sender<Sesion>>){
 
 #[get("/server")]
 async fn server(q: &State<Sender<Sesion>>, mut t: Shutdown) -> EventStream![]{
-    let mut Subs = q.subscribe();
+    let mut subs = q.subscribe();
     EventStream! {
         loop {
-            let ServM = select! {
-                ServM = Subs.recv() => match ServM {
-                    Ok(ServM) => ServM,
-                    Err(RecvError::Closed) => break,
-                    Err(RecvError::Lagged(_)) => continue,
+            let serv_m = select! {
+                serv_m = subs.recv() => match serv_m {
+                    Ok(serv_m) => {
+                        println!("Todo bein");
+                        serv_m},
+                    Err(RecvError::Closed) => {
+                        println!("Error, se corto la conexion");
+                        break},
+                    Err(RecvError::Lagged(_)) => {
+                        println!("Lageo");
+                        continue},
                 },
                 _ = &mut t => break,
             };
-            
-            yield Event::json(&ServM);
+
+            yield Event::json(&serv_m);
         }
     }
 
