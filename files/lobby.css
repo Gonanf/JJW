@@ -2,10 +2,32 @@ body{
     margin: 0;
     padding: 0;
     overflow: hidden;
+    background-color: black;
 }
 
 #consola{
     height: 100vh;
 }
 
+#mensajes{
+    background: rgb(35, 35, 77);
+    height: 75vh;
+    overflow: scroll;
+}
 
+h1{
+    color: white;
+}
+
+p{
+    color: white;
+    margin-top: auto;
+    margin-bottom: auto;
+    width: 100vh;
+}
+
+span{
+    color: red;
+    background: black;
+    margin-right: 10px;
+}
