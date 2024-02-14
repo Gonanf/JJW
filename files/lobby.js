@@ -60,20 +60,22 @@ Mensajeador.addEventListener("click", function (a) {
   fetch("/mensaje", {
     method: "POST",
     body: new URLSearchParams({ usuario, destino, mensaje }),
-  }).then(function(r){if(r.ok){document.getElementById("mensaje").value = ""}});
+  }).then(function (r) {
+    if (r.ok) {
+      document.getElementById("mensaje").value = "";
+    }
+  });
   return true;
 });
 
 //Añade un mensaje en el chat del usuario
 function CrearMensaje(usuario, destino, mensaje) {
-  if (localStorage["destino"] == destino) {
     let MensajeElemento = document.createElement("p");
     let NombreUsuario = document.createElement("span")
     NombreUsuario.appendChild(document.createTextNode(usuario + ":"));
     MensajeElemento.appendChild(NombreUsuario);
     MensajeElemento.appendChild(document.createTextNode(mensaje));
     Msg.appendChild(MensajeElemento);
-  }
 }
 
 //Se conecta con el server con un GET, se inicia un loop infinito (hasta q se corte la conexion)
@@ -81,25 +83,43 @@ function CrearMensaje(usuario, destino, mensaje) {
 //el server es quien se subscribe al canal principal y manda los mensajes (podria hacer el filtro ahi, pero ni ganas, tendria q hacer todo un tema)
 //Para mandar datos como el destino tendria q precindir del EventSource y usar un POST, o sino almacenar los datos en el server, pero no quisiera hacer eso
 //por q si fuera mi server, no queria que consumiera tantos recursos
-function ConectarseServer() {
-  const ServerEvents = new EventSource("/server");
+async function ConectarseServer() {
+  let usuario = localStorage["nombre"];
+  let destino = localStorage["destino"];
+  let mensaje = "nashe";
+  let server = await fetch("/server",
+  {method: "POST",
+  body: new URLSearchParams({ usuario, destino, mensaje })
+  });
 
-  ServerEvents.addEventListener("message", (s) => {
-    s.preventDefault();
-    let ms = JSON.parse(s.data);
-    if (!"usuario" in ms || !"destino" in ms || !"mensaje" in ms) {
-      return;
+  const r = server.body.pipeThrough(new TextDecoderStream()).getReader()
+  while (true) {
+    if(!server.ok){
+      console.log("no conectao {}",v);
+      setTimeout(() => ConectarseServer(), (() => 1 * 1000)());
     }
-    CrearMensaje(ms.usuario, ms.destino, ms.mensaje);
-    return true;
-  });
-  ServerEvents.addEventListener("open", function (s) {
-    console.log("Conectao");
-    return true;
-  });
-  ServerEvents.addEventListener("error", function (s) {
-    console.log("error " + s.data);
-    setTimeout(() => ConectarseServer(), (() => 1 * 1000)());
-    return false;
-  });
+    else{
+      const {value, done} = await r.read();
+      if (done) break;
+      if (!value.includes("usuario") || !value.includes("destino") || !value.includes("mensaje")) {
+        console.log("Errorsito, no esta formateado");
+      }
+      else{
+        console.log(value.toString());
+        let parse = JSON.parse(value.replace("data:",""));
+        console.log(parse);
+        CrearMensaje(parse.usuario,parse.destino,parse.mensaje);
+      }
+    }
+  }
+
+
+    const msg = server.body.pipeThrough(new TextDecoderStream()).getReader();
+    while (true){
+    const {v,f} = await msg.read();
+    if (f) {console.log("Terminando {}",f); break;}
+    console.log("Mensaje {}",v);
+    
+  }
+  return true
 }

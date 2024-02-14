@@ -2,6 +2,7 @@ use rocket::form::{Form, FromForm};
 use rocket::fs::{relative, FileServer};
 use rocket::response::stream::{EventStream, Event};
 use rocket::tokio::select;
+use rocket::serde::json::serde_json;
 use rocket::tokio::sync::broadcast::error;
 use rocket::tokio::sync::broadcast::{channel, Sender, error::RecvError};
 use rocket::{fs::NamedFile, serde::{Deserialize, Serialize}, State, Shutdown};
@@ -32,16 +33,25 @@ fn msg(ms: Form<Sesion>,q: &State<Sender<Sesion>>){
     let _f = q.send(ms.into_inner());
 }
 
-#[get("/server")]
-async fn server(q: &State<Sender<Sesion>>, mut t: Shutdown) -> EventStream![]{
+#[post("/server", data = "<sesion>")]
+async fn server(sesion: Form<Sesion>,q: &State<Sender<Sesion>>, mut t: Shutdown) -> EventStream![]{
     let mut subs = q.subscribe();
     EventStream! {
         loop {
+
             let serv_m = select! {
                 serv_m = subs.recv() => match serv_m {
                     Ok(serv_m) => {
                         println!("Todo bein");
-                        serv_m},
+                        if sesion.destino == serv_m.destino{
+                            println!("Es tu mensaje");
+                            serv_m
+                        }
+                        else {
+                            println!("no es tu mensaje");
+                            continue
+                        }
+                        },
                     Err(RecvError::Closed) => {
                         println!("Error, se corto la conexion");
                         break},
@@ -49,9 +59,9 @@ async fn server(q: &State<Sender<Sesion>>, mut t: Shutdown) -> EventStream![]{
                         println!("Lageo");
                         continue},
                 },
-                _ = &mut t => break,
+                _ = &mut t => {println!("Termino con t"); break},
             };
-
+            println!("{}",serde_json::to_string(&serv_m).expect("msg"));
             yield Event::json(&serv_m);
         }
     }
