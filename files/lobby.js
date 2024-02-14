@@ -78,11 +78,9 @@ function CrearMensaje(usuario, destino, mensaje) {
     Msg.appendChild(MensajeElemento);
 }
 
-//Se conecta con el server con un GET, se inicia un loop infinito (hasta q se corte la conexion)
-//que recive mensajes y los manda en formato json (eso usa HTTP) en el back end (aca no)
-//el server es quien se subscribe al canal principal y manda los mensajes (podria hacer el filtro ahi, pero ni ganas, tendria q hacer todo un tema)
-//Para mandar datos como el destino tendria q precindir del EventSource y usar un POST, o sino almacenar los datos en el server, pero no quisiera hacer eso
-//por q si fuera mi server, no queria que consumiera tantos recursos
+//TODO: Diferenciacion entre mensaje propio y de otro
+//TODO: Mensaje de entrar/salir de lobby
+
 async function ConectarseServer() {
   let usuario = localStorage["nombre"];
   let destino = localStorage["destino"];

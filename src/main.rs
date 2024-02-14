@@ -33,6 +33,10 @@ fn msg(ms: Form<Sesion>,q: &State<Sender<Sesion>>){
     let _f = q.send(ms.into_inner());
 }
 
+
+//TODO: Mensajes de lobbys con SQL
+//TODO: Lobbys viejos eliminan sus mensajes
+//TODO: Recuperacion de mensajes de lobbys
 #[post("/server", data = "<sesion>")]
 async fn server(sesion: Form<Sesion>,q: &State<Sender<Sesion>>, mut t: Shutdown) -> EventStream![]{
     let mut subs = q.subscribe();
