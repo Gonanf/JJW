@@ -61,7 +61,6 @@ async fn server(sesion: Form<Sesion>,q: &State<Sender<Sesion>>, mut t: Shutdown)
                 },
                 _ = &mut t => {println!("Termino con t"); break},
             };
-            println!("{}",serde_json::to_string(&serv_m).expect("msg"));
             yield Event::json(&serv_m);
         }
     }
