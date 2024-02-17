@@ -4,6 +4,9 @@ let ConsolaForm = document.getElementById("formConsola");
 let Destino = document.getElementById("destino");
 let Volver = document.getElementById("volver");
 
+//Actividad
+let activo = true;
+
 //elementos del chat
 let Chat = document.getElementById("chat");
 Chat.hidden = true;
@@ -18,6 +21,7 @@ if (localStorage["destino"]) {
   Chat.hidden = false;
   Nombre.innerHTML = "Lobby " + localStorage["destino"];
   ConectarseServer();
+  RecuperarMensajes();
 }
 
 //Boton para volver al menu de sesion
@@ -44,6 +48,7 @@ ConsolaForm.addEventListener("click", function (a) {
   Chat.hidden = false;
   Nombre.innerHTML = "Lobby " + localStorage["destino"];
   ConectarseServer();
+  RecuperarMensajes();
   return true;
 });
 
@@ -59,7 +64,7 @@ Mensajeador.addEventListener("click", function (a) {
   let mensaje = document.getElementById("mensaje").value;
   fetch("/mensaje", {
     method: "POST",
-    body: new URLSearchParams({ usuario, destino, mensaje }),
+    body: new URLSearchParams({ usuario, destino, mensaje, activo }),
   }).then(function (r) {
     if (r.ok) {
       document.getElementById("mensaje").value = "";
@@ -80,14 +85,40 @@ function CrearMensaje(usuario, destino, mensaje) {
 
 //TODO: Diferenciacion entre mensaje propio y de otro
 //TODO: Mensaje de entrar/salir de lobby
+//TODO: Multiples lobbys
+
+async function RecuperarMensajes(){
+  Msg.replaceChildren();
+  let usuario = localStorage["nombre"];
+  let destino = localStorage["destino"];
+  let mensaje = "nashe";
+
+  let db = await fetch("/restaurar",
+  {method: "POST",
+  body: new URLSearchParams({ usuario, destino, mensaje, activo })
+  }).then(response => response.json())
+  .then(data => {
+    console.log(data.length)
+    if (data && data.length > 0){
+      for (let i = 0; i < data.length; i++){
+        CrearMensaje(data[i].usuario,data[i].destino,data[i].mensaje);
+        console.log(data[i]);
+      }
+    }
+
+  });
+
+
+}
 
 async function ConectarseServer() {
   let usuario = localStorage["nombre"];
   let destino = localStorage["destino"];
   let mensaje = "nashe";
+
   let server = await fetch("/server",
   {method: "POST",
-  body: new URLSearchParams({ usuario, destino, mensaje })
+  body: new URLSearchParams({ usuario, destino, mensaje, activo })
   });
 
   const r = server.body.pipeThrough(new TextDecoderStream()).getReader()
@@ -99,7 +130,7 @@ async function ConectarseServer() {
     else{
       const {value, done} = await r.read();
       if (done) break;
-      if (!value.includes("usuario") || !value.includes("destino") || !value.includes("mensaje")) {
+      if (!value.includes("usuario") || !value.includes("destino") || !value.includes("mensaje") ) {
         console.log("Errorsito, no esta formateado");
       }
       else{
@@ -109,15 +140,6 @@ async function ConectarseServer() {
         CrearMensaje(parse.usuario,parse.destino,parse.mensaje);
       }
     }
-  }
-
-
-    const msg = server.body.pipeThrough(new TextDecoderStream()).getReader();
-    while (true){
-    const {v,f} = await msg.read();
-    if (f) {console.log("Terminando {}",f); break;}
-    console.log("Mensaje {}",v);
-    
   }
   return true
 }
