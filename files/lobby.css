@@ -40,7 +40,12 @@ span{
     overflow: scroll;
 }
 
-#lobbys > button{
+#lobbys > div{
     width: 100%;
+    height: auto;
+}
+
+#lobbys > div > button{
+    width: 50%;
     height: auto;
 }
