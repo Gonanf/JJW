@@ -31,3 +31,16 @@ span{
     background: black;
     margin-right: 10px;
 }
+
+#lob{
+    float: left;
+    background: rgb(3, 68, 80);
+    height: 75vh;
+    width: 25vh;
+    overflow: scroll;
+}
+
+#lobbys > button{
+    width: 100%;
+    height: auto;
+}
