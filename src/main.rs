@@ -1,21 +1,13 @@
-use core::num;
-use std::any::Any;
 use std::env;
-
 use rocket::form::{Form, FromForm};
 use rocket::fs::{relative, FileServer};
-use rocket::futures::future::ok;
 use rocket::response::stream::{EventStream, Event};
 use rocket::serde::json::Json;
-use rocket::time::Time;
 use rocket::tokio::select;
 use rocket::tokio::sync::broadcast::{channel, Sender, error::RecvError};
-use rocket::Error;
 use rocket::{fs::NamedFile, serde::{Deserialize, Serialize}, State, Shutdown};
 use surrealdb::engine::local::File;
-use surrealdb::sql::{thing, Thing};
 use surrealdb::Surreal;
-use surrealdb::sql::Uuid;
 
 use surrealdb::engine::local::Db;
 #[macro_use] extern crate rocket;
@@ -44,7 +36,7 @@ struct Sesion{
 async fn msg(ms: Form<Sesion>,q: &State<Sender<Sesion>>, db: &State<Surreal<Db>>){
     let contador: Vec<Contador> = db.select("contador").await.expect("error obteniendo contador");
     let ID = contador[0].id_c;
-    let mensaje: Option<Sesion> = db.create(("mensajes", ID))
+    let _mensaje: Option<Sesion> = db.create(("mensajes", ID))
     .content(Sesion {
         usuario: ms.usuario.to_string(),
         destino: ms.destino.to_string(),
@@ -54,7 +46,7 @@ async fn msg(ms: Form<Sesion>,q: &State<Sender<Sesion>>, db: &State<Surreal<Db>>
     for v in s {
         println!("Mensaje: {}", v.mensaje);
     }
-    let contador: Vec<Contador> = db.update("contador").content(Contador{id_c: ID + 1}).await.expect("error en actualizar contador");
+    let _contador: Vec<Contador> = db.update("contador").content(Contador{id_c: ID + 1}).await.expect("error en actualizar contador");
     let _f = q.send(ms.into_inner());
 }
 
@@ -75,13 +67,12 @@ async fn restaurar_mensajes(sesion: Form<Sesion>, db: &State<Surreal<Db>>) -> Js
     Json(envio)
 }
 
-#[derive(Debug, FromForm , Clone, Serialize, Deserialize, )]
+#[derive(Debug, Clone, Serialize, Deserialize, )]
 #[serde(crate = "rocket::serde")]
 struct Contador{
     id_c: i64,
 }
 
-//TODO: Lobbys viejos eliminan sus mensajes
 #[get("/server")]
 async fn server(q: &State<Sender<Sesion>>, mut t: Shutdown) -> EventStream![]{
     let mut subs = q.subscribe();
@@ -119,7 +110,7 @@ async fn rocket() -> _ {
     db.use_ns("Chaos").use_db("JJW").await.expect("Error en cambiar de ns y db");
     let search_counter: Vec<Contador> = db.select("contador").await.expect("Errorsito uwu");
     if search_counter.len() == 0{
-        let c: Vec<Contador> = db.create("contador").content(Contador{id_c: 0}).await.expect("Errorsito contador"); 
+        let _c: Vec<Contador> = db.create("contador").content(Contador{id_c: 0}).await.expect("Errorsito contador"); 
     }
     rocket::build()
     .manage(channel::<Sesion>(500).0)

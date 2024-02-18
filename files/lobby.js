@@ -172,16 +172,21 @@ function CrearLobby(nombre){
 
 //Añade un mensaje en el chat del usuario
 function CrearMensaje(usuario, destino, mensaje) {
-    let MensajeElemento = document.createElement("p");
+  let MensajeElemento = document.createElement("p");
+  if (usuario != localStorage["nombre"]){
     let NombreUsuario = document.createElement("span")
     NombreUsuario.appendChild(document.createTextNode(usuario + ":"));
     MensajeElemento.appendChild(NombreUsuario);
-    MensajeElemento.appendChild(document.createTextNode(mensaje));
-    Msg.appendChild(MensajeElemento);
+    MensajeElemento.style.background = "gray";
+  }
+  else{
+    MensajeElemento.style.background = "green";
+  }
+  MensajeElemento.style.width = "100%";
+  MensajeElemento.appendChild(document.createTextNode(mensaje));
+  Msg.appendChild(MensajeElemento);
 }
 
-//TODO: Diferenciacion entre mensaje propio y de otro
-//TODO: Mensaje de entrar/salir de lobby
 
 async function RecuperarMensajes(){
   Msg.replaceChildren();
@@ -203,7 +208,6 @@ async function RecuperarMensajes(){
     }
 
   });
-
 
 }
 
