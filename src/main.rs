@@ -121,32 +121,6 @@ async fn rocket() -> _ {
     if search_counter.len() == 0{
         let c: Vec<Contador> = db.create("contador").content(Contador{id_c: 0}).await.expect("Errorsito contador"); 
     }
-    /*let a: Option<Prueba> = db.create(("prueba", 0)).content(Prueba{
-        id_p: 0 ,
-        texto: "Prueba1".to_string(),
-    }).await.expect("Amongas");
-    let a: Option<Prueba> = db.create(("prueba", 1)).content(Prueba{
-        id_p: 1,
-        texto: "Prueba2".to_string(),
-    }).await.expect("Amongas");
-    let a: Option<Prueba> = db.create(("prueba", 2)).content(Prueba{
-        id_p: 2,
-        texto: "Prueba3".to_string(),
-    }).await.expect("Amongas");
-    let a: Option<Prueba> = db.create(("prueba", 3)).content(Prueba{
-        id_p: 3,
-        texto: "Prueba4".to_string(),
-    }).await.expect("Amongas");
-    let a: Option<Prueba> = db.create(("prueba", 4)).content(Prueba{
-        id_p: 4,
-        texto: "Prueba5".to_string(),
-    }).await.expect("Amongas");
-    let b: Vec<Option<Prueba>> = db.select("prueba").await.unwrap();
-    for i in b{
-        let ID = &i.as_ref().unwrap().id_p;
-        let Texto = &i.as_ref().unwrap().texto;
-        println!("ID: {}, Texto: {}",ID,Texto);
-    } */
     rocket::build()
     .manage(channel::<Sesion>(500).0)
     .manage(db)
