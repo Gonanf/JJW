@@ -1,4 +1,5 @@
 use core::num;
+use std::any::Any;
 use std::env;
 
 use rocket::form::{Form, FromForm};
@@ -6,8 +7,10 @@ use rocket::fs::{relative, FileServer};
 use rocket::futures::future::ok;
 use rocket::response::stream::{EventStream, Event};
 use rocket::serde::json::Json;
+use rocket::time::Time;
 use rocket::tokio::select;
 use rocket::tokio::sync::broadcast::{channel, Sender, error::RecvError};
+use rocket::Error;
 use rocket::{fs::NamedFile, serde::{Deserialize, Serialize}, State, Shutdown};
 use surrealdb::engine::local::File;
 use surrealdb::sql::{thing, Thing};
@@ -36,16 +39,12 @@ struct Sesion{
     mensaje: String,
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(crate = "rocket::serde")]
-struct Record {
-    #[allow(dead_code)]
-    id: Thing,
-}
 
 #[post("/mensaje", data = "<ms>")]
-async fn msg(ms: Form<Sesion>,q: &State<Sender<Sesion>>, db: &State<Surreal<Db>>,numero_mensaje: &State<i32>){
-    let c: Vec<Sesion> = db.create("mensajes")
+async fn msg(ms: Form<Sesion>,q: &State<Sender<Sesion>>, db: &State<Surreal<Db>>){
+    let contador: Vec<Contador> = db.select("contador").await.expect("error obteniendo contador");
+    let ID = contador[0].id_c;
+    let mensaje: Option<Sesion> = db.create(("mensajes", ID))
     .content(Sesion {
         usuario: ms.usuario.to_string(),
         destino: ms.destino.to_string(),
@@ -55,6 +54,7 @@ async fn msg(ms: Form<Sesion>,q: &State<Sender<Sesion>>, db: &State<Surreal<Db>>
     for v in s {
         println!("Mensaje: {}", v.mensaje);
     }
+    let contador: Vec<Contador> = db.update("contador").content(Contador{id_c: ID + 1}).await.expect("error en actualizar contador");
     let _f = q.send(ms.into_inner());
 }
 
@@ -74,7 +74,13 @@ async fn restaurar_mensajes(sesion: Form<Sesion>, db: &State<Surreal<Db>>) -> Js
     dbg!(&envio);
     Json(envio)
 }
-//TODO: Arreglar error: los mensajes no estan en orden
+
+#[derive(Debug, FromForm , Clone, Serialize, Deserialize, )]
+#[serde(crate = "rocket::serde")]
+struct Contador{
+    id_c: i64,
+}
+
 //TODO: Lobbys viejos eliminan sus mensajes
 #[get("/server")]
 async fn server(q: &State<Sender<Sesion>>, mut t: Shutdown) -> EventStream![]{
@@ -111,6 +117,36 @@ async fn server(q: &State<Sender<Sesion>>, mut t: Shutdown) -> EventStream![]{
 async fn rocket() -> _ {
     let db: Surreal<Db> = Surreal::new::<File>("database").await.expect("No se cargo la base de datos en rocket launch");
     db.use_ns("Chaos").use_db("JJW").await.expect("Error en cambiar de ns y db");
+    let search_counter: Vec<Contador> = db.select("contador").await.expect("Errorsito uwu");
+    if search_counter.len() == 0{
+        let c: Vec<Contador> = db.create("contador").content(Contador{id_c: 0}).await.expect("Errorsito contador"); 
+    }
+    /*let a: Option<Prueba> = db.create(("prueba", 0)).content(Prueba{
+        id_p: 0 ,
+        texto: "Prueba1".to_string(),
+    }).await.expect("Amongas");
+    let a: Option<Prueba> = db.create(("prueba", 1)).content(Prueba{
+        id_p: 1,
+        texto: "Prueba2".to_string(),
+    }).await.expect("Amongas");
+    let a: Option<Prueba> = db.create(("prueba", 2)).content(Prueba{
+        id_p: 2,
+        texto: "Prueba3".to_string(),
+    }).await.expect("Amongas");
+    let a: Option<Prueba> = db.create(("prueba", 3)).content(Prueba{
+        id_p: 3,
+        texto: "Prueba4".to_string(),
+    }).await.expect("Amongas");
+    let a: Option<Prueba> = db.create(("prueba", 4)).content(Prueba{
+        id_p: 4,
+        texto: "Prueba5".to_string(),
+    }).await.expect("Amongas");
+    let b: Vec<Option<Prueba>> = db.select("prueba").await.unwrap();
+    for i in b{
+        let ID = &i.as_ref().unwrap().id_p;
+        let Texto = &i.as_ref().unwrap().texto;
+        println!("ID: {}, Texto: {}",ID,Texto);
+    } */
     rocket::build()
     .manage(channel::<Sesion>(500).0)
     .manage(db)

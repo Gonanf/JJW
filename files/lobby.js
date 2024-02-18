@@ -108,7 +108,7 @@ Mensajeador.addEventListener("click", function (a) {
   let mensaje = document.getElementById("mensaje").value;
   fetch("/mensaje", {
     method: "POST",
-    body: new URLSearchParams({ usuario, destino, mensaje, activo }),
+    body: new URLSearchParams({ usuario, destino, mensaje}),
   }).then(function (r) {
     if (r.ok) {
       document.getElementById("mensaje").value = "";
