@@ -47,8 +47,7 @@ if (localStorage["destino"]) {
   }
 }
 
-
-
+//TODO: Reformular el manejo de lobbys teniendo en cuenta la base de datos
 
 BotonAñadirLobby.addEventListener("click", function(a){
   a.preventDefault();
