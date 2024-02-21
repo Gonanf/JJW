@@ -24,49 +24,72 @@ LobbysDiv.replaceChildren();
 
 let Lobbys = [];
 
-if (localStorage["lobbys"]){
-  console.log(JSON.parse(localStorage["lobbys"]));
-  console.log(Lobbys);
-  for (let i = 0; i < JSON.parse(localStorage["lobbys"]).length; i++){
-    console.log("Creando lobby con LocalStorage Lobbys ",JSON.parse(localStorage["lobbys"])[i]);
-    CrearLobby(JSON.parse(localStorage["lobbys"])[i]);
-  }
-  Lobbys = JSON.parse(localStorage["lobbys"]);
+AñadirLobbys();
+
+function AñadirLobbys(){
+  fetch("/obtener_datos", { method: "GET" })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data) {
+        console.log(data);
+        console.log("Lobbys:");
+        console.log(data.lobbys);
+        console.log(data.lobbys.length);
+        if (data.lobbys.length > 0) {
+          for (let i = 0; i < data.lobbys.length; i++) {
+            console.log("Creando lobby con Cookies Lobbys ", data.lobbys[i]);
+            CrearLobby(data.lobbys[i]);
+          }
+          Lobbys = data.lobbys;
+        }
+      }
+    });
 }
 
+VerificarUsuario();
 
-//Si ya tiene guardado localmente un destino, acceder directamente al menu del chat
-if (localStorage["destino"]) {
-  Consola.hidden = true;
-  Chat.hidden = false;
-  Nombre.innerHTML = "Lobby " + localStorage["destino"];
-  ConectarseServer();
-  RecuperarMensajes();
-  if (Lobbys.indexOf(localStorage["destino"]) == -1){
-    ActualizarLobbys(localStorage["destino"]);
-  }
+function VerificarUsuario(){
+  fetch("/obtener_datos", { method: "GET" })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data) {
+          console.log("Skipeando");
+          Consola.hidden = true;
+          Chat.hidden = false;
+          Nombre.innerHTML = "Lobby " + data.destino;
+          ConectarseServer();
+          RecuperarMensajes();
+          if (Lobbys.indexOf(data.destino) == -1) {
+            ActualizarLobbys(data.destino);
+          }
+        console.log("Nombre: " + data.nombre + " Destino: " + data.destino);
+      }
+    });
+
+  
 }
 
-//TODO: Reformular el manejo de lobbys teniendo en cuenta la base de datos
-
-BotonAñadirLobby.addEventListener("click", function(a){
+BotonAñadirLobby.addEventListener("click", function (a) {
   a.preventDefault();
   FormLobby.hidden = false;
-})
+});
 
-FormLobby.addEventListener("submit", function(a){
+FormLobby.addEventListener("submit", function (a) {
   a.preventDefault();
-  if (!NombreLobby){FormLobby.hidden = true; return}
+  if (!NombreLobby) {
+    FormLobby.hidden = true;
+    return;
+  }
   console.log("Creando lobby con el form ", NombreLobby.value);
   CrearLobby(NombreLobby.value);
-  ActualizarLobbys(NombreLobby.value)
+  ActualizarLobbys(NombreLobby.value);
   NombreLobby.value = "";
-  FormLobby.hidden = true; 
-})
+  FormLobby.hidden = true;
+});
 
 //Boton para volver al menu de sesion
 Volver.addEventListener("click", function () {
-  document.location.href = "http://192.168.1.40:28129/";
+  window.location.href = "/";
 });
 
 //Boton para volver al menu de salas
@@ -83,31 +106,34 @@ ConsolaForm.addEventListener("click", function (a) {
     alert("No hay un destino");
     return false;
   }
-  localStorage["destino"] = Destino.value;
-  Consola.hidden = true;
-  Chat.hidden = false;
-  Nombre.innerHTML = "Lobby " + localStorage["destino"];
-  ConectarseServer();
-  RecuperarMensajes();
-  console.log("Creando lobby con el consola form ",localStorage["destino"])
-  CrearLobby(localStorage["destino"]);
-  ActualizarLobbys(localStorage["destino"]);
-  return true;
+  let code = Destino.value;
+  fetch("/cambiar_lobby", { method: "POST", body: new URLSearchParams({code}) }).then(
+    () => {
+      Consola.hidden = true;
+      Chat.hidden = false;
+      Nombre.innerHTML = "Lobby " + Destino.value;
+      ConectarseServer();
+      RecuperarMensajes();
+      console.log("Creando lobby con el consola form ", Destino.value);
+      CrearLobby(Destino.value);
+      ActualizarLobbys(Destino.value);
+      return true;
+    }
+  );
 });
 
-//Codigo robao, funcion del boton que envia el mensaje, obtiene todos los datos y los manda para el back end
-//PT: No funcionaba por k no coloque las variables con el nombre correcto de los elementos en el struct Mensajes
+//funcion del boton que envia el mensaje, obtiene todos los datos y los manda para el back end
 Mensajeador.addEventListener("click", function (a) {
   a.preventDefault();
   if (!document.getElementById("mensaje").value) {
     return;
   }
-  let usuario = localStorage["nombre"];
-  let destino = localStorage["destino"];
+  let usuario = "";
+  let destino = "";
   let mensaje = document.getElementById("mensaje").value;
   fetch("/mensaje", {
     method: "POST",
-    body: new URLSearchParams({ usuario, destino, mensaje}),
+    body: new URLSearchParams({ usuario, destino, mensaje }),
   }).then(function (r) {
     if (r.ok) {
       document.getElementById("mensaje").value = "";
@@ -116,69 +142,73 @@ Mensajeador.addEventListener("click", function (a) {
   return true;
 });
 
-function ActualizarLobbys(nombre){
-  if (Lobbys.indexOf(nombre) == -1 && !nombre == ""){
-    console.log("Antes: ",Lobbys);
+function ActualizarLobbys(nombre) {
+  if (Lobbys.indexOf(nombre) == -1 && !nombre == "") {
+    console.log("Antes: ", Lobbys);
+    let code = nombre;
+    fetch("/añadir_lobby", { method: "POST", body: new URLSearchParams({code}) });
     Lobbys.push(nombre);
-    console.log("Despues: ",Lobbys);
-    localStorage["lobbys"] = JSON.stringify(Lobbys);
-    console.log("Local: ",JSON.parse(localStorage["lobbys"]));
+    console.log("Despues: ", Lobbys);
   }
 }
 
-function CrearLobby(nombre){
-  if (Lobbys.indexOf(nombre) == -1 && !nombre == ""){
+function CrearLobby(nombre) {
+  if (Lobbys.indexOf(nombre) == -1 && !nombre == "") {
     let a = document.createElement("button");
-  a.appendChild(document.createTextNode(nombre));
-  let b = document.createElement("button");
-  b.appendChild(document.createTextNode("-"));
-  let div = document.createElement("div");
-  div.appendChild(a);
-  div.appendChild(b);
-  LobbysDiv.appendChild(div);
+    a.appendChild(document.createTextNode(nombre));
+    let b = document.createElement("button");
+    b.appendChild(document.createTextNode("-"));
+    let div = document.createElement("div");
+    div.appendChild(a);
+    div.appendChild(b);
+    LobbysDiv.appendChild(div);
 
-  a.addEventListener("click", function(a){
-    a.preventDefault();
-    localStorage["destino"] = nombre;
-    RecuperarMensajes();
-    Nombre.innerHTML = "Lobby " + localStorage["destino"];
-  })
+    a.addEventListener("click", function (a) {
+      a.preventDefault();
+      let code = nombre;
+      fetch("/cambiar_lobby", {
+        method: "POST",
+        body: new URLSearchParams({code}),
+      }).then(RecuperarMensajes());
+      Nombre.innerHTML = "Lobby " + nombre;
+    });
 
-  b.addEventListener("click", function(d){
-    d.preventDefault();
-    console.log("Antes: ",Lobbys);
-    Lobbys.splice(Lobbys.indexOf(nombre),1);
-    console.log("Despues: ",Lobbys);
-    localStorage["lobbys"] = JSON.stringify(Lobbys);
-    console.log("Local: ",JSON.parse(localStorage["lobbys"]));
-    console.log(Lobbys.length);
-    if (Lobbys.length == 0){
-      Consola.hidden = false;
-      Chat.hidden = true;
-      Nombre.innerHTML = "Lobby";
-      localStorage.removeItem("destino");
-    }
-    else{
-      localStorage["destino"] = Lobbys[Lobbys.length - 1];
-      console.log("El destino es ", localStorage["destino"]);
-      Nombre.innerHTML = "Lobby " + localStorage["destino"];
-      RecuperarMensajes();
-    }
-    LobbysDiv.removeChild(div);
-  })
+    b.addEventListener("click", function (d) {
+      d.preventDefault();
+      let code = nombre;
+      console.log("Antes: ", Lobbys);
+      Lobbys.splice(Lobbys.indexOf(nombre), 1);
+      console.log("Despues: ", Lobbys);
+      fetch("/eliminar_lobby", { method: "POST", body: new URLSearchParams({code}) });
+      
+      if (Lobbys.length == 0) {
+        Consola.hidden = false;
+        Chat.hidden = true;
+        Nombre.innerHTML = "Lobby";
+      } else {
+        code = Lobbys[Lobbys.length - 1];
+        fetch("/cambiar_lobby", {
+          method: "POST",
+          body: new URLSearchParams({code}),
+        }).then(RecuperarMensajes());
+        Nombre.innerHTML = "Lobby " + Lobbys[Lobbys.length - 1];
+        RecuperarMensajes();
+      }
+      LobbysDiv.removeChild(div);
+    });
   }
 }
 
 //Añade un mensaje en el chat del usuario
 function CrearMensaje(usuario, destino, mensaje) {
   let MensajeElemento = document.createElement("p");
-  if (usuario != localStorage["nombre"]){
-    let NombreUsuario = document.createElement("span")
+  temp_datos = ObtenerDatos();
+  if (usuario != temp_datos[0]) {
+    let NombreUsuario = document.createElement("span");
     NombreUsuario.appendChild(document.createTextNode(usuario + ":"));
     MensajeElemento.appendChild(NombreUsuario);
     MensajeElemento.style.background = "gray";
-  }
-  else{
+  } else {
     MensajeElemento.style.background = "green";
   }
   MensajeElemento.style.width = "100%";
@@ -186,33 +216,23 @@ function CrearMensaje(usuario, destino, mensaje) {
   Msg.appendChild(MensajeElemento);
 }
 
-
-async function RecuperarMensajes(){
+function RecuperarMensajes() {
   Msg.replaceChildren();
-  let usuario = localStorage["nombre"];
-  let destino = localStorage["destino"];
-  let mensaje = "nashe";
-
-  let db = await fetch("/restaurar",
-  {method: "POST",
-  body: new URLSearchParams({ usuario, destino, mensaje, activo })
-  }).then(response => response.json())
-  .then(data => {
-    console.log(data.length)
-    if (data && data.length > 0){
-      for (let i = 0; i < data.length; i++){
-        CrearMensaje(data[i].usuario,data[i].destino,data[i].mensaje);
-        console.log(data[i]);
+  let db = fetch("/restaurar", { method: "GET" })
+    .then((response) => response.json())
+    .then((data) => {
+      console.log(data.length);
+      if (data && data.length > 0) {
+        for (let i = 0; i < data.length; i++) {
+          CrearMensaje(data[i].usuario, data[i].destino, data[i].mensaje);
+          console.log(data[i]);
+        }
       }
-    }
-
-  });
-
+    });
 }
 
-async function ConectarseServer() {
+function ConectarseServer() {
   const ServerEvents = new EventSource("/server");
-
   ServerEvents.addEventListener("message", (s) => {
     s.preventDefault();
     let ms = JSON.parse(s.data);
@@ -231,6 +251,35 @@ async function ConectarseServer() {
     setTimeout(() => ConectarseServer(), (() => 1 * 1000)());
     return false;
   });
-  
-  return true
+
+  return true;
+}
+
+async function ObtenerDatos() {
+  let datos = [];
+  await fetch("/obtener_datos", { method: "GET" })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data) {
+        console.log("Nombre: " + data.nombre + " Destino: " + data.destino);
+        datos = [data.nombre, data.destino];
+      }
+    });
+    return datos;
+}
+
+async function ObtenerLobbys() {
+  let lobbys;
+  await fetch("/obtener_datos", { method: "GET" })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data) {
+        console.log(data);
+        console.log("Lobbys:");
+        console.log(data.lobbys);
+        console.log(data.lobbys.length);
+        lobbys = data.lobbys
+      }
+    });
+    return lobbys;
 }

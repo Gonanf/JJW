@@ -1,20 +1,19 @@
-use std::any::{ Any, TypeId };
 use std::env;
-use std::sync::Condvar;
+use std::ops::Add;
+use uuid::Uuid;
 use rocket::form::{ Form, FromForm };
 use rocket::fs::{ relative, FileServer };
-use rocket::http::Status;
 use rocket::response::stream::{ EventStream, Event };
-use rocket::serde::json::{ to_string, Json };
+use rocket::serde::json::Json;
 use rocket::tokio::select;
 use rocket::tokio::sync::broadcast::{ channel, Sender, error::RecvError };
 use rocket::{ fs::NamedFile, serde::{ Deserialize, Serialize }, State, Shutdown };
 use surrealdb::engine::local::File;
-use surrealdb::sql::statements::ContinueStatement;
-use surrealdb::sql::{ Thing };
+use surrealdb::sql::{Thing};
 use surrealdb::Surreal;
-use rocket::http::{Cookie, CookieJar};
+use rocket::http::{Cookie, CookieJar, SameSite};
 use surrealdb::engine::local::Db;
+use unicode_segmentation::UnicodeSegmentation;
 #[macro_use]
 extern crate rocket;
 
@@ -45,11 +44,7 @@ struct User {
     destino: String,
 }
 
-//TODO: GET de obtener lobbys del usuario
-//TODO: POST de añadir Lobbys al usuario
-//TODO: POST de eliminar Lobbys al usuario
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, FromForm, Clone, Serialize, Deserialize)]
 #[serde(crate = "rocket::serde")]
 struct RespuestaId {
     code: String,
@@ -97,52 +92,135 @@ async fn registrarse(user: Form<User>, db: &State<Surreal<Db>>, galleta: &Cookie
         respuesta = RespuestaId {
             code: "Usuario inicio sesion".to_string(),
         };
-        println!("añade galletita");
-        galleta.add_private(("ID", id_user[posicion_usuario].id.to_string()));
+        println!("añade galletita USUARIO ID: {}", id_user[posicion_usuario].id);
+        let c = Cookie::build(("ID", id_user[posicion_usuario].id.to_string()))
+        .secure(false)
+        .same_site(SameSite::Lax);
+        galleta.add_private(c);
         return Json(respuesta);
     } else {
         println!("usuario creo la sesion");
+        let id: Uuid = Uuid::now_v7();
         let mut temp: Vec<String> = Vec::new();
             temp.push("Main".to_string());
-            let usuario: Vec<Record> = db
-                .create("usuarios")
+            let usuario: Record = db
+                .create(("usuarios", id.to_string()))
                 .content(User {
                     nombre: user.nombre.to_string(),
                     contraseña: user.contraseña.to_string(),
                     lobbys: temp,
                     destino: "Main".to_string(),
                 }).await
-                .expect("error crearndo usuario");
-        galleta.add_private(("ID", usuario[0].id.to_string()));
+                .expect("error crearndo usuario").unwrap();
+            let c = Cookie::build(("ID", usuario.id.to_string()))
+        .secure(false)
+        .same_site(SameSite::Lax);
+        galleta.add_private(c);
             respuesta = RespuestaId {
                 code: "Usuario creo sesion".to_string(),
             };
+            dbg!(usuario);
             return Json(respuesta);
     }
 }
 
-#[post("/mensaje", data = "<ms>")]
-async fn msg(ms: Form<Sesion>, q: &State<Sender<Sesion>>, db: &State<Surreal<Db>>, galleta: &CookieJar<'_>) {
-    let user_data: Option<Cookie<'_>> = galleta.get_private("ID");
-    let sd: Cookie<'_> = user_data.expect("Q paso master");
-    let usuario: User = db.select(("usuarios", sd.value())).await.expect("Error obteniendo el usuario por ID").expect("wa");
-    dbg!(&usuario);
-    dbg!(sd);
+fn de_cookies_a_uuid(id: Cookie<'_>) -> String{
+    let id_a: Vec<&str> = id.value().split(":").collect();
+    let id_uuid: String = id_a[1].to_string();
+    let mut id_final = String::new();
+    for (i,c) in id_uuid.chars().enumerate(){
+        if i != 0 && i != (id_uuid.graphemes(true).count() - 1){
+            id_final = id_final.clone().add(&c.to_string());
+        }
+    }
+    return id_final;
+}
 
+#[get("/obtener_datos")]
+async fn obtener_datos(db: &State<Surreal<Db>>, galleta: &CookieJar<'_>) -> Json<User>{
+        println!("obteniendo cookies");
+    let user_data: Cookie<'_> = galleta.get_private("ID").expect("q paso master");
+    println!("cookies obtenidos {}",user_data.value());
+    let id_final = de_cookies_a_uuid(user_data);
+    println!("{}", id_final);
+    let usuario: Option<User> = db.select(("usuarios", id_final)).await.unwrap();
+    println!("usuario obtenido");
+    let mut f: User = usuario.unwrap().clone();
+    dbg!(&f);
+    f.contraseña = "*****".to_string();
+    println!("devolviendo usuario");
+    return Json(f);
+}
+
+#[post("/añadir_lobby", data = "<lobby>")]
+async fn añadir_lobby(lobby: Form<RespuestaId>,db: &State<Surreal<Db>>, galleta: &CookieJar<'_>){
+    let user_data: Cookie<'_> = galleta.get_private("ID").expect("q paso master");
+    let id_final = de_cookies_a_uuid(user_data);
+    let mut usuario: User = db.select(("usuarios", id_final.clone())).await.expect("Error obteniendo el usuario por ID").expect("wa");
+    usuario.lobbys.push(lobby.code.clone());
+    let _actualizado: Option<User> = db.update(("usuarios",id_final.clone())).content(User{nombre: usuario.nombre, contraseña: usuario.contraseña, lobbys: usuario.lobbys , destino: lobby.code.clone()}).await.expect("Error actualizando lobbys");
+}
+
+#[post("/cambiar_lobby", data = "<lobby>")]
+async fn cambiar_lobby(lobby: Form<RespuestaId>,db: &State<Surreal<Db>>, galleta: &CookieJar<'_>){
+    let user_data: Cookie<'_> = galleta.get_private("ID").expect("q paso master");
+    let id_final = de_cookies_a_uuid(user_data);
+    let usuario: User = db.select(("usuarios", id_final.clone())).await.expect("Error obteniendo el usuario por ID").expect("wa");
+    let _actualizado: Option<User> = db.update(("usuarios",id_final.clone())).content(User{nombre: usuario.nombre, contraseña: usuario.contraseña, lobbys: usuario.lobbys , destino: lobby.code.clone()}).await.expect("Error actualizando lobbys");
+}
+
+#[post("/eliminar_lobby", data = "<lobby>")]
+async fn eliminar_lobby(lobby: Form<RespuestaId>,db: &State<Surreal<Db>>, galleta: &CookieJar<'_>){
+    let user_data: Cookie<'_> = galleta.get_private("ID").expect("q paso master");
+    let id_final = de_cookies_a_uuid(user_data);
+    let mut usuario: User = db.select(("usuarios", id_final.clone())).await.expect("Error obteniendo el usuario por ID").expect("wa");
+    for (i,v) in usuario.lobbys.iter().enumerate(){
+        if v == &lobby.code{
+            usuario.lobbys.remove(i);
+            break;
+        }
+    }
+    let lobby_nuevo: Option<&String> = usuario.lobbys.last();
+    let ln;
+    if lobby_nuevo == None{
+        ln = "Main".to_string();
+    }
+    else {
+        ln = lobby_nuevo.expect("aw").clone();
+    }
+    let _actualizado: Option<User> = db.update(("usuarios",id_final.clone())).content(User{nombre: usuario.nombre, contraseña: usuario.contraseña, lobbys: usuario.lobbys , destino: ln}).await.expect("Error actualizando lobbys");
+}
+
+#[get("/eliminar_cookies")]
+async fn eliminar_cookies(galleta: &CookieJar<'_>){
+    galleta.remove_private("ID");
+}
+
+#[post("/mensaje", data = "<ms>")]
+async fn msg(mut ms: Form<Sesion>, q: &State<Sender<Sesion>>, db: &State<Surreal<Db>>, galleta: &CookieJar<'_>) {
+    let user_data: Cookie<'_> = galleta.get_private("ID").expect("Q paso master");
+    let id_final = de_cookies_a_uuid(user_data);
+    let usuario: User = db.select(("usuarios", id_final.clone())).await.expect("Error obteniendo el usuario por ID").expect("wa");
+    dbg!(&usuario);
     let contador: Vec<Contador> = db.select("contador").await.expect("error obteniendo contador");
     let id = contador[0].id_c;
     let _mensaje: Option<Sesion> = db
         .create(("mensajes", id))
         .content(Sesion {
             usuario: usuario.nombre.to_string(),
-            destino: ms.destino.to_string(),
-            mensaje: ms.mensaje.to_string(),
+            destino: usuario.destino.to_string(),
+            mensaje: ms.mensaje.clone(),
         }).await
         .expect("Error en crear a mesias");
     let s: Vec<Sesion> = db.select("mensajes").await.expect("msg");
     for v in s {
         println!("Mensaje: {}", v.mensaje);
     }
+    ms = Sesion {
+        usuario: usuario.nombre.to_string(),
+        destino: usuario.destino.to_string(),
+        mensaje: ms.mensaje.clone(),
+    }.into();
     let _contador: Option<Contador> = db
         .update(("contador", 0))
         .content(Contador { id_c: id + 1 }).await
@@ -153,11 +231,11 @@ async fn msg(ms: Form<Sesion>, q: &State<Sender<Sesion>>, db: &State<Surreal<Db>
 #[get["/restaurar"]]
 async fn restaurar_mensajes(db: &State<Surreal<Db>>, galleta: &CookieJar<'_>) -> Json<Vec<Sesion>> {
     println!("AAAAAAAAAAAAAAAAA");
-    let user_data: Option<Cookie<'_>> = galleta.get_private("ID");
-    let sd: Cookie<'_> = user_data.expect("Q paso master");
-    let usuario: User = db.select(("usuarios", sd.value())).await.expect("Error obteniendo el usuario por ID").expect("wa");
+    let user_data: Cookie<'_> = galleta.get_private("ID").expect("Q paso master");
+    let id_final = de_cookies_a_uuid(user_data);
+    let usuario: User = db.select(("usuarios", id_final)).await.expect("Error obteniendo el usuario por ID").expect("wa");
+    
     dbg!(&usuario);
-    dbg!(sd);
         let mut envio: Vec<Sesion> = Vec::new();
 
         let a: Vec<Sesion> = db.select("mensajes").await.expect("Error en obtner mensajes");
@@ -179,13 +257,11 @@ struct Contador {
     id_c: i64,
 }
 
+
 #[get("/server")]
-async fn server(q: &State<Sender<Sesion>>, mut t: Shutdown, db: &State<Surreal<Db>>, galleta: &CookieJar<'_>) -> EventStream![] {
-    let user_data: Option<Cookie<'_>> = galleta.get_private("ID");
-    let sd: Cookie<'_> = user_data.expect("Q paso master");
-    let usuario: User = db.select(("usuarios", sd.value())).await.expect("Error obteniendo el usuario por ID").expect("wa");
-    dbg!(&usuario);
-    dbg!(sd);
+async fn server<'a>(q: &'a State<Sender<Sesion>>, mut t: Shutdown, db: &'a State<Surreal<Db>>, galleta: &'a CookieJar<'a>) -> EventStream![Event + 'a] {
+    let user_data: Cookie<'_> = galleta.get_private("ID").expect("Q paso master");
+    let id_final = de_cookies_a_uuid(user_data);
     let mut subs = q.subscribe();
     EventStream! {
         loop {
@@ -194,7 +270,8 @@ async fn server(q: &State<Sender<Sesion>>, mut t: Shutdown, db: &State<Surreal<D
                 serv_m = subs.recv() => match serv_m {
                     Ok(serv_m) => {
                         println!("Todo bein");
-                        if serv_m.destino == usuario.destino{serv_m}
+                        let usuario: User = db.select(("usuarios", id_final.clone())).await.unwrap().unwrap();
+                        if serv_m.destino == usuario.destino { serv_m}
                         else{continue}
                         },
                     Err(RecvError::Closed) => {
@@ -206,7 +283,6 @@ async fn server(q: &State<Sender<Sesion>>, mut t: Shutdown, db: &State<Surreal<D
                 },
                 _ = &mut t => {println!("Termino con t"); break},
             };
-
             yield Event::json(&serv_m);
         }
         println!("Ya no anda activo");
@@ -230,6 +306,6 @@ async fn rocket() -> _ {
         ::build()
         .manage(channel::<Sesion>(1023).0)
         .manage(db)
-        .mount("/", routes![index, lobby, msg, server, restaurar_mensajes, registrarse])
+        .mount("/", routes![index, lobby, msg, server, restaurar_mensajes, registrarse, obtener_datos, añadir_lobby, eliminar_lobby, eliminar_cookies, cambiar_lobby])
         .mount("/", FileServer::from(relative!("files")))
 }

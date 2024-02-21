@@ -9,4 +9,12 @@ edition = "2021"
 json = "0.12.4"
 rocket = { version = "0.5.0", features = ["json", "secrets"]}
 surrealdb = { version = "1.2.0", features = ["kv-rocksdb"] }
+unicode-segmentation = "1.11.0"
 
+[dependencies.uuid]
+version = "1.7.0"
+features = [
+    "v4",                
+    "fast-rng",          
+    "macro-diagnostics", 
+]

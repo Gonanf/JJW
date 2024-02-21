@@ -12,11 +12,11 @@ if (document.cookie.match(/^(.*;)?\s*ID\s*=\s*[^;]+(.*)?$/) == null) {
   no.appendChild(document.createTextNode("No"));
   document.body.appendChild(no);
   s.onclick = function () {
-    //TODO: Actualizar para hacer una peticion al server para eliminar las cookies
-    localStorage.clear();
-    forma.hidden = false;
-    s.hidden = true;
-    no.hidden = true;
+    fetch("/eliminar_cookies", {method: "GET"}).then(function(a){
+      forma.hidden = false;
+      s.hidden = true;
+      no.hidden = true;
+    })
   };
   no.onclick = function () {
     window.location.href = '/lobby';
