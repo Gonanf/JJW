@@ -66,7 +66,7 @@ FormLobby.addEventListener("submit", function(a){
 
 //Boton para volver al menu de sesion
 Volver.addEventListener("click", function () {
-  document.location.href = "http://127.0.0.1:8000/";
+  document.location.href = "http://192.168.1.40:28129/";
 });
 
 //Boton para volver al menu de salas

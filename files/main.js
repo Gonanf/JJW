@@ -1,14 +1,9 @@
 let forma = document.getElementById("forma");
-let nombre = document.getElementById("nombre");
-let contraseña = document.getElementById("contraseña");
-if (
-  localStorage["nombre"] &&
-  localStorage["contraseña"] &&
-  //TODO: Reformular esto, que use una funcion especialmente para saber si el nombre y contraseña coinciden
-  !verificar_usuario(localStorage["nombre"], localStorage["contraseña"])
-) {
+let nomb = document.getElementById("nombre");
+let contra = document.getElementById("contraseña");
+if (document.cookie.match(/^(.*;)?\s*ID\s*=\s*[^;]+(.*)?$/) == null) {
   document.getElementById("ingresar").textContent =
-    "Hola " + localStorage["nombre"] + ", Quieres cambiar de usuario?";
+    "Hola, no me se tu nombre, quieres cambiar de usuario?";
   forma.hidden = true;
   let s = document.createElement("button");
   s.appendChild(document.createTextNode("Si"));
@@ -17,47 +12,55 @@ if (
   no.appendChild(document.createTextNode("No"));
   document.body.appendChild(no);
   s.onclick = function () {
+    //TODO: Actualizar para hacer una peticion al server para eliminar las cookies
     localStorage.clear();
     forma.hidden = false;
     s.hidden = true;
     no.hidden = true;
   };
   no.onclick = function () {
-    document.location.href = "http://127.0.0.1:8000/lobby";
+    window.location.href = '/lobby';
   };
 }
 forma.addEventListener("submit", function (a) {
   a.preventDefault();
-  if (!nombre.value) {
+  if (!nomb.value) {
     alert("El nombre esta vacio");
     return;
   }
-  if (!contraseña.value) {
+  if (!contra.value) {
     alert("La contraseña esta vacia");
     return;
   }
 
-  if (verificar_usuario(nombre.value, contraseña.value)) {
-    localStorage["nombre"] = nombre.value;
-    localStorage["contraseña"] = contraseña.value;
-    document.location.href = "http://127.0.0.1:8000/lobby";
-  } else {
-    alert("Contraseña equivocada (o algo malo paso)");
-  }
-});
-
-async function verificar_usuario(nombre, contraseña) {
-  let lobbys = ["main"];
-  let user = await fetch("/registrarse", {
+  console.log("verificascac");
+  let lobbys = ["Main"];
+  let destino = "Main"
+  let nombre = nomb.value;
+  let contraseña = contra.value;
+  console.log("Iniciando la verificasao");
+  fetch("/registrarse", {
     method: "POST",
-    body: new URLSearchParams({ nombre, contraseña, lobbys }),
+    body: new URLSearchParams({ nombre, contraseña, lobbys, destino }),
   })
     .then((response) => response.json())
     .then((data) => {
       console.log(data);
-      if (data && data.code == 202) {
-        return true;
+      if (data) {
+        console.log(data.code);
+        console.log(data.code == "Contraseña invalida");
+        console.log(data.code == "Usuario inicio sesion");
+        if (data.code == "Contraseña invalida"){
+          alert("Contraseña invalida");
+    console.log("NOVERIFICO");
+          
+        }
+        if(data.code == "Usuario inicio sesion" || data.code == "Usuario creo sesion"){
+          window.location.href = '/lobby';
+  console.log("VERIFICO");
+        }
       }
-      return false;
     });
-}
+  
+
+});
