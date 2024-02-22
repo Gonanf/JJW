@@ -42,6 +42,8 @@ function AñadirLobbys(){
           }
           Lobbys = data.lobbys;
         }
+        Nombre.innerHTML = "Lobby " + data.destino;
+
       }
     });
 }
@@ -63,6 +65,7 @@ function VerificarUsuario(){
             ActualizarLobbys(data.destino);
           }
         console.log("Nombre: " + data.nombre + " Destino: " + data.destino);
+        Nombre.innerHTML = "Lobby " + data.destino;
       }
     });
 
@@ -83,6 +86,8 @@ FormLobby.addEventListener("submit", function (a) {
   console.log("Creando lobby con el form ", NombreLobby.value);
   CrearLobby(NombreLobby.value);
   ActualizarLobbys(NombreLobby.value);
+  Nombre.innerHTML = "Lobby " + NombreLobby.value;
+  RecuperarMensajes();
   NombreLobby.value = "";
   FormLobby.hidden = true;
 });
@@ -192,7 +197,6 @@ function CrearLobby(nombre) {
           body: new URLSearchParams({code}),
         }).then(RecuperarMensajes());
         Nombre.innerHTML = "Lobby " + Lobbys[Lobbys.length - 1];
-        RecuperarMensajes();
       }
       LobbysDiv.removeChild(div);
     });
@@ -202,18 +206,23 @@ function CrearLobby(nombre) {
 //Añade un mensaje en el chat del usuario
 function CrearMensaje(usuario, destino, mensaje) {
   let MensajeElemento = document.createElement("p");
-  temp_datos = ObtenerDatos();
-  if (usuario != temp_datos[0]) {
-    let NombreUsuario = document.createElement("span");
-    NombreUsuario.appendChild(document.createTextNode(usuario + ":"));
-    MensajeElemento.appendChild(NombreUsuario);
-    MensajeElemento.style.background = "gray";
-  } else {
-    MensajeElemento.style.background = "green";
-  }
-  MensajeElemento.style.width = "100%";
-  MensajeElemento.appendChild(document.createTextNode(mensaje));
-  Msg.appendChild(MensajeElemento);
+  fetch("/obtener_datos", { method: "GET" })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data) {
+        if (usuario != data.nombre) {
+          let NombreUsuario = document.createElement("span");
+          NombreUsuario.appendChild(document.createTextNode(usuario + ":"));
+          MensajeElemento.appendChild(NombreUsuario);
+          MensajeElemento.style.background = "gray";
+        } else {
+          MensajeElemento.style.background = "green";
+        }
+        MensajeElemento.style.width = "100%";
+        MensajeElemento.appendChild(document.createTextNode(mensaje));
+        Msg.appendChild(MensajeElemento);
+      }
+    });
 }
 
 function RecuperarMensajes() {
@@ -255,31 +264,3 @@ function ConectarseServer() {
   return true;
 }
 
-async function ObtenerDatos() {
-  let datos = [];
-  await fetch("/obtener_datos", { method: "GET" })
-    .then((response) => response.json())
-    .then((data) => {
-      if (data) {
-        console.log("Nombre: " + data.nombre + " Destino: " + data.destino);
-        datos = [data.nombre, data.destino];
-      }
-    });
-    return datos;
-}
-
-async function ObtenerLobbys() {
-  let lobbys;
-  await fetch("/obtener_datos", { method: "GET" })
-    .then((response) => response.json())
-    .then((data) => {
-      if (data) {
-        console.log(data);
-        console.log("Lobbys:");
-        console.log(data.lobbys);
-        console.log(data.lobbys.length);
-        lobbys = data.lobbys
-      }
-    });
-    return lobbys;
-}

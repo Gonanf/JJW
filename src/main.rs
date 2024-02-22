@@ -62,8 +62,6 @@ async fn registrarse(user: Form<User>, db: &State<Surreal<Db>>, galleta: &Cookie
     let mut nombre_coincide = false;
     let mut contraseña_coincide = false;
     let mut posicion_usuario = 0;
-    println!("en busqueda de usuarios");
-    dbg!(&usuarios);
     for (i, v) in usuarios.iter().enumerate() {
         if v.nombre == user.nombre {
             nombre_coincide = true;
@@ -75,6 +73,8 @@ async fn registrarse(user: Form<User>, db: &State<Surreal<Db>>, galleta: &Cookie
             nombre_coincide = true;
             contraseña_coincide = true;
             posicion_usuario = i;
+            dbg!(v);
+            dbg!(posicion_usuario);
             break;
         }
         println!("iterando usuarios");
@@ -201,7 +201,6 @@ async fn msg(mut ms: Form<Sesion>, q: &State<Sender<Sesion>>, db: &State<Surreal
     let user_data: Cookie<'_> = galleta.get_private("ID").expect("Q paso master");
     let id_final = de_cookies_a_uuid(user_data);
     let usuario: User = db.select(("usuarios", id_final.clone())).await.expect("Error obteniendo el usuario por ID").expect("wa");
-    dbg!(&usuario);
     let contador: Vec<Contador> = db.select("contador").await.expect("error obteniendo contador");
     let id = contador[0].id_c;
     let _mensaje: Option<Sesion> = db
@@ -230,12 +229,9 @@ async fn msg(mut ms: Form<Sesion>, q: &State<Sender<Sesion>>, db: &State<Surreal
 
 #[get["/restaurar"]]
 async fn restaurar_mensajes(db: &State<Surreal<Db>>, galleta: &CookieJar<'_>) -> Json<Vec<Sesion>> {
-    println!("AAAAAAAAAAAAAAAAA");
     let user_data: Cookie<'_> = galleta.get_private("ID").expect("Q paso master");
     let id_final = de_cookies_a_uuid(user_data);
     let usuario: User = db.select(("usuarios", id_final)).await.expect("Error obteniendo el usuario por ID").expect("wa");
-    
-    dbg!(&usuario);
         let mut envio: Vec<Sesion> = Vec::new();
 
         let a: Vec<Sesion> = db.select("mensajes").await.expect("Error en obtner mensajes");

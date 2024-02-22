@@ -1,3 +1,4 @@
 [global]
 address = "192.168.1.46"
 port = 28129
+secret_key = "c88a0c47f2b3cab9c5acc1f4f3dfdc6b3f16c769f6bb1d895a989c9ecc1f862c"

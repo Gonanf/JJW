@@ -1,7 +1,7 @@
 let forma = document.getElementById("forma");
 let nomb = document.getElementById("nombre");
 let contra = document.getElementById("contraseña");
-if (document.cookie.match(/^(.*;)?\s*ID\s*=\s*[^;]+(.*)?$/) == null) {
+if (document.cookie.indexOf("ID=") != -1) {
   document.getElementById("ingresar").textContent =
     "Hola, no me se tu nombre, quieres cambiar de usuario?";
   forma.hidden = true;
