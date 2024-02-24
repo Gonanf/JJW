@@ -2,5 +2,8 @@
     "DockerRun.DisableDockerrc": true,
     "rust-analyzer.linkedProjects": [
         ".\\Cargo.toml"
-    ]
+    ],
+    "extensions.autoCheckUpdates": false,
+"extensions.autoUpdate": false,
+"search.followSymlinks": false
 }

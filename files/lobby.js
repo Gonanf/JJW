@@ -24,9 +24,12 @@ LobbysDiv.replaceChildren();
 
 let Lobbys = [];
 
+let nombre;
+let destino;
+
 AñadirLobbys();
 
-function AñadirLobbys(){
+function AñadirLobbys() {
   fetch("/obtener_datos", { method: "GET" })
     .then((response) => response.json())
     .then((data) => {
@@ -42,34 +45,21 @@ function AñadirLobbys(){
           }
           Lobbys = data.lobbys;
         }
+        console.log("Skipeando");
+        Consola.hidden = true;
+        Chat.hidden = false;
         Nombre.innerHTML = "Lobby " + data.destino;
-
-      }
-    });
-}
-
-VerificarUsuario();
-
-function VerificarUsuario(){
-  fetch("/obtener_datos", { method: "GET" })
-    .then((response) => response.json())
-    .then((data) => {
-      if (data) {
-          console.log("Skipeando");
-          Consola.hidden = true;
-          Chat.hidden = false;
-          Nombre.innerHTML = "Lobby " + data.destino;
-          ConectarseServer();
-          RecuperarMensajes();
-          if (Lobbys.indexOf(data.destino) == -1) {
-            ActualizarLobbys(data.destino);
-          }
+        ConectarseServer();
+        RecuperarMensajes();
+        if (Lobbys.indexOf(data.destino) == -1) {
+          ActualizarLobbys(data.destino);
+        }
         console.log("Nombre: " + data.nombre + " Destino: " + data.destino);
         Nombre.innerHTML = "Lobby " + data.destino;
+        nombre = data.nombre;
+        destino = data.destino;
       }
     });
-
-  
 }
 
 BotonAñadirLobby.addEventListener("click", function (a) {
@@ -112,19 +102,21 @@ ConsolaForm.addEventListener("click", function (a) {
     return false;
   }
   let code = Destino.value;
-  fetch("/cambiar_lobby", { method: "POST", body: new URLSearchParams({code}) }).then(
-    () => {
-      Consola.hidden = true;
-      Chat.hidden = false;
-      Nombre.innerHTML = "Lobby " + Destino.value;
-      ConectarseServer();
-      RecuperarMensajes();
-      console.log("Creando lobby con el consola form ", Destino.value);
-      CrearLobby(Destino.value);
-      ActualizarLobbys(Destino.value);
-      return true;
-    }
-  );
+  fetch("/cambiar_lobby", {
+    method: "POST",
+    body: new URLSearchParams({ code }),
+  }).then(() => {
+    Consola.hidden = true;
+    Chat.hidden = false;
+    Nombre.innerHTML = "Lobby " + Destino.value;
+    destino = code;
+    ConectarseServer();
+    RecuperarMensajes();
+    console.log("Creando lobby con el consola form ", Destino.value);
+    CrearLobby(Destino.value);
+    ActualizarLobbys(Destino.value);
+    return true;
+  });
 });
 
 //funcion del boton que envia el mensaje, obtiene todos los datos y los manda para el back end
@@ -133,9 +125,8 @@ Mensajeador.addEventListener("click", function (a) {
   if (!document.getElementById("mensaje").value) {
     return;
   }
-  let usuario = "";
-  let destino = "";
   let mensaje = document.getElementById("mensaje").value;
+  let usuario = "";
   fetch("/mensaje", {
     method: "POST",
     body: new URLSearchParams({ usuario, destino, mensaje }),
@@ -149,11 +140,12 @@ Mensajeador.addEventListener("click", function (a) {
 
 function ActualizarLobbys(nombre) {
   if (Lobbys.indexOf(nombre) == -1 && !nombre == "") {
-    console.log("Antes: ", Lobbys);
     let code = nombre;
-    fetch("/añadir_lobby", { method: "POST", body: new URLSearchParams({code}) });
+    fetch("/añadir_lobby", {
+      method: "POST",
+      body: new URLSearchParams({ code }),
+    });
     Lobbys.push(nombre);
-    console.log("Despues: ", Lobbys);
   }
 }
 
@@ -173,9 +165,10 @@ function CrearLobby(nombre) {
       let code = nombre;
       fetch("/cambiar_lobby", {
         method: "POST",
-        body: new URLSearchParams({code}),
+        body: new URLSearchParams({ code }),
       }).then(RecuperarMensajes());
       Nombre.innerHTML = "Lobby " + nombre;
+      destino = nombre;
     });
 
     b.addEventListener("click", function (d) {
@@ -184,8 +177,11 @@ function CrearLobby(nombre) {
       console.log("Antes: ", Lobbys);
       Lobbys.splice(Lobbys.indexOf(nombre), 1);
       console.log("Despues: ", Lobbys);
-      fetch("/eliminar_lobby", { method: "POST", body: new URLSearchParams({code}) });
-      
+      fetch("/eliminar_lobby", {
+        method: "POST",
+        body: new URLSearchParams({ code }),
+      });
+
       if (Lobbys.length == 0) {
         Consola.hidden = false;
         Chat.hidden = true;
@@ -194,8 +190,9 @@ function CrearLobby(nombre) {
         code = Lobbys[Lobbys.length - 1];
         fetch("/cambiar_lobby", {
           method: "POST",
-          body: new URLSearchParams({code}),
+          body: new URLSearchParams({ code }),
         }).then(RecuperarMensajes());
+        destino = Lobbys[Lobbys.length - 1];
         Nombre.innerHTML = "Lobby " + Lobbys[Lobbys.length - 1];
       }
       LobbysDiv.removeChild(div);
@@ -204,25 +201,19 @@ function CrearLobby(nombre) {
 }
 
 //Añade un mensaje en el chat del usuario
-function CrearMensaje(usuario, destino, mensaje) {
+function CrearMensaje(usuario, mensaje) {
   let MensajeElemento = document.createElement("p");
-  fetch("/obtener_datos", { method: "GET" })
-    .then((response) => response.json())
-    .then((data) => {
-      if (data) {
-        if (usuario != data.nombre) {
-          let NombreUsuario = document.createElement("span");
-          NombreUsuario.appendChild(document.createTextNode(usuario + ":"));
-          MensajeElemento.appendChild(NombreUsuario);
-          MensajeElemento.style.background = "gray";
-        } else {
-          MensajeElemento.style.background = "green";
-        }
-        MensajeElemento.style.width = "100%";
-        MensajeElemento.appendChild(document.createTextNode(mensaje));
-        Msg.appendChild(MensajeElemento);
-      }
-    });
+  if (usuario != nombre) {
+    let NombreUsuario = document.createElement("span");
+    NombreUsuario.appendChild(document.createTextNode(usuario + ":"));
+    MensajeElemento.appendChild(NombreUsuario);
+    MensajeElemento.style.background = "gray";
+  } else {
+    MensajeElemento.style.background = "green";
+  }
+  MensajeElemento.style.width = "100%";
+  MensajeElemento.appendChild(document.createTextNode(mensaje));
+  Msg.appendChild(MensajeElemento);
 }
 
 function RecuperarMensajes() {
@@ -233,7 +224,7 @@ function RecuperarMensajes() {
       console.log(data.length);
       if (data && data.length > 0) {
         for (let i = 0; i < data.length; i++) {
-          CrearMensaje(data[i].usuario, data[i].destino, data[i].mensaje);
+          CrearMensaje(data[i].usuario, data[i].mensaje);
           console.log(data[i]);
         }
       }
@@ -248,7 +239,7 @@ function ConectarseServer() {
     if (!"usuario" in ms || !"destino" in ms || !"mensaje" in ms) {
       return;
     }
-    CrearMensaje(ms.usuario, ms.destino, ms.mensaje);
+    CrearMensaje(ms.usuario, ms.mensaje);
     return true;
   });
   ServerEvents.addEventListener("open", function (s) {
@@ -263,4 +254,3 @@ function ConectarseServer() {
 
   return true;
 }
-
