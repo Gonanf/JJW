@@ -221,13 +221,18 @@ function RecuperarMensajes() {
   let db = fetch("/restaurar", { method: "GET" })
     .then((response) => response.json())
     .then((data) => {
-      console.log(data.length);
-      if (data && data.length > 0) {
+      console.log(data.destino + destino);
+      if (data && data.length > 0 && data[0].destino == destino){
         for (let i = 0; i < data.length; i++) {
           CrearMensaje(data[i].usuario, data[i].mensaje);
           console.log(data[i]);
         }
       }
+      else if (data.length > 0){
+        RecuperarMensajes();
+        return;
+      }
+      
     });
 }
 
